@@ -83,17 +83,7 @@ When you are ready to submit your work:
 In the GitHub repository, there is a `pets_db.json` file that contains scraped data on pets.
 
 - **Issue**: The dog breed "křižovec" incorrectly includes some cat entries.
-- **Solution**: If you are fine-tuning the model or using the database, **exclude** all lines with the breed "křižovec" to avoid this issue.
-
-    You can filter the data before using it:
-    ```python
-    import json
-
-    with open('pets_db.json', 'r') as f:
-        pets_data = json.load(f)
-
-    pets_data_filtered = [pet for pet in pets_data if pet['breed'] != 'křižovec']
-    ```
+- **Solution**: If you are fine-tuning the model or using the database, you should probably **exclude** all lines with the breed "křižovec" to avoid this issue.
 
 ## 7. Utility Functions
 
@@ -108,7 +98,19 @@ To use the utility functions in your notebooks, copy the top cells from `PetsDet
 
 ```python
 # Download utility.py file
-!wget https://github.com/your-username/your-repository/raw/main/utility.py
+import requests
+
+# Correct raw URL for the utility.py file
+url = "https://raw.githubusercontent.com/avkaz/DeepLearningPetIdentification/main/utils.py"
+
+# Fetch and save the file locally
+response = requests.get(url)
+with open("utility.py", "wb") as f:
+    f.write(response.content)
+
 
 # Import utility functions
 from utility import resize_image, another_function
+import utility
+print("utility.py downloaded successfully.")
+```
