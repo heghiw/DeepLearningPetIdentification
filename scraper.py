@@ -220,7 +220,7 @@ def save_to_json(data_dict: dict, db_path: str):
 def main():
     """Main function to execute the scraping process."""
     # Generate URLs for scraping based on page numbers
-    urls_to_scrape = [f"https://www.psidetektiv.cz/ztracena-zvirata/strana/{x}/" for x in range(264,596)]
+    urls_to_scrape = [f"https://www.psidetektiv.cz/ztracena-zvirata/strana/{x}/" for x in range(396,596)]
 
     # Process each URL in the list
     for url in urls_to_scrape:
