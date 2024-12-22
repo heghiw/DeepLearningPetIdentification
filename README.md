@@ -24,7 +24,7 @@ This document outlines the workflow for contributing to the project. Please foll
 7. [Utility Functions](#utility-functions)
 
 ## 1. Branch Naming Convention
-
+Before every modification you should create a new branch first.
 When creating a new branch, follow this naming format:
 - **Feature Branch**: `feat_<feature_name>_<short_description>`
 - **Fix Branch**: `fix_<issue_name>_<short_description>`
