@@ -13,7 +13,6 @@ import json
 from google.colab import userdata  # Specific to Google Colab environment
 
 def get_data():
-  url = "https://raw.githubusercontent.com/avkaz/DeepLearningPetIdentification/main/pets_db.json"
     """
     Fetches and parses JSON data from the given URL.
 
@@ -26,13 +25,18 @@ def get_data():
     Raises:
         Exception: If the request or JSON parsing fails.
     """
+    url = "https://raw.githubusercontent.com/avkaz/DeepLearningPetIdentification/main/pets_db.json"
+
     try:
         # Send a GET request to the raw URL
         response = requests.get(url)
 
         # Check for successful request (status code 200)
         response.raise_for_status()
+        
+        # Parse the response as JSON
         data = response.json()
+        
         return data
 
     except requests.RequestException as e:
