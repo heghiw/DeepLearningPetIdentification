@@ -12,8 +12,8 @@ from firebase_admin import credentials, storage
 import json
 from google.colab import userdata  # Specific to Google Colab environment
 
-
-def get_data(url):
+def get_data():
+  url = "https://raw.githubusercontent.com/avkaz/DeepLearningPetIdentification/main/pets_db.json"
     """
     Fetches and parses JSON data from the given URL.
 
@@ -27,17 +27,23 @@ def get_data(url):
         Exception: If the request or JSON parsing fails.
     """
     try:
+        # Send a GET request to the raw URL
         response = requests.get(url)
+
+        # Check for successful request (status code 200)
         response.raise_for_status()
         data = response.json()
         return data
+
     except requests.RequestException as e:
+        # Handle network-related issues (connection problems, timeout, etc.)
         print(f"An error occurred while fetching data: {e}")
         raise
+
     except json.JSONDecodeError as e:
+        # Handle issues when the response is not valid JSON
         print(f"An error occurred while parsing JSON: {e}")
         raise
-
 
 def download_picture_as_bytes(image_url):
     """
