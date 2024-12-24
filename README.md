@@ -101,7 +101,7 @@ To use the utility functions in your notebooks, copy the top cells from `PetsDet
 import requests
 
 # Correct raw URL for the utility.py file
-url = "https://raw.githubusercontent.com/avkaz/DeepLearningPetIdentification/main/utils.py"
+url = "https://raw.githubusercontent.com/avkaz/DeepLearningPetIdentification/main/utility.py"
 
 # Fetch and save the file locally
 response = requests.get(url)
