@@ -204,39 +204,77 @@ def visualize_image(image, title="Processed Image", visualize=False):
         plt.show()
 
 
-# Function to download image and preprocess
-def download_and_preprocess_image(url, target_size=(224, 224), visualize=False):
-    """
-    Downloads an image from the provided URL, preprocesses it, and optionally visualizes it.
 
-    Arguments:
-    url -- The URL of the image to download.
-    target_size -- The size to resize the image to (default is 224x224).
-    visualize -- Flag to control if the image should be visualized (default is True).
+# Resize the image to a smaller size to reduce the tensor's size
+def resize_image(image, target_size=(128, 128)):
+    """
+    Resize the image to the target size.
+
+    Args:
+    image -- The image tensor to resize.
+    target_size -- The target size (height, width) for resizing.
 
     Returns:
-    The preprocessed image (TensorFlow Tensor).
+    Resized image tensor.
     """
-    # Download the image from the URL
+    resized_image = tf.image.resize(image, target_size)
+    return resized_image
+
+# Save the image tensor in a compressed format using TFRecord
+def save_tensor_as_tfrecord(tensor, filename="image_data.tfrecord"):
+    """
+    Saves the image tensor in TFRecord format to reduce size and improve efficiency.
+
+    Args:
+    tensor -- The image tensor to save.
+    filename -- The name of the file to save the tensor in.
+    """
+    # Create a TFRecord writer
+    with tf.io.TFRecordWriter(filename) as writer:
+        # Create a feature dictionary with the image tensor
+        feature = {
+            'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.io.encode_jpeg(tensor).numpy()]))
+        }
+        example = tf.train.Example(features=tf.train.Features(feature=feature))
+        # Write the example to the TFRecord file
+        writer.write(example.SerializeToString())
+
+# Load an image from a URL and preprocess
+def download_and_preprocess_image(url, target_size=(128, 128), save_to_tfrecord=False):
+    """
+    Download and preprocess the image, then optionally save it as a TFRecord.
+
+    Args:
+    url -- The URL to download the image.
+    target_size -- The target size to resize the image.
+    save_to_tfrecord -- Flag to save the image tensor as a TFRecord (default False).
+    
+    Returns:
+    Resized image tensor.
+    """
+    # Assuming the `fix_orientation`, `detect_pet`, etc., are defined as before
+
+    # Download the image (as before)
     response = requests.get(url)
     image_bytes = response.content
     pil_image = Image.open(io.BytesIO(image_bytes))
     pil_image = fix_orientation(pil_image)
 
-    # Convert the image to a TensorFlow tensor and normalize
+    # Convert to tensor and normalize
     image = tf.convert_to_tensor(np.array(pil_image), dtype=tf.float32) / 255.0
 
-    # Detect pets in the image
+    # Detect and crop the pet (optional)
     bounding_box = detect_pet(image)
-
     if bounding_box is not None:
-        # If a pet is detected, crop and resize around it
         image = crop_and_resize(image, bounding_box, target_size)
     else:
-        # If no pet detected, resize with padding
         image = tf.image.resize_with_crop_or_pad(image, target_size[0], target_size[1])
 
-    # Visualize the image if needed
-    visualize_image(image, title="Processed Image", visualize=visualize)
+    # Resize the image to reduce its size (e.g., 128x128)
+    image = resize_image(image, target_size)
+
+    # Optionally save the image tensor to a TFRecord file
+    if save_to_tfrecord:
+        save_tensor_as_tfrecord(image, filename="pet_image_data.tfrecord")
 
     return image
