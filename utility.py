@@ -277,3 +277,25 @@ def download_and_preprocess_image(url, target_size=(128, 128), save_to_tfrecord=
         save_tensor_as_tfrecord(image, filename="pet_image_data.tfrecord")
 
     return image
+
+
+def download_json_from_google_drive(output_path):
+    """
+    Downloads a JSON file from Google Drive using the file's unique ID.
+
+    :param file_id: str, the unique identifier of the file on Google Drive.
+                    Example: '1A2B3C4D5E6F...'
+    :param output_path: str, the path to save the downloaded file. Example: './data/file.json'
+    """
+    # Construct the direct download URL
+    url = f"https://drive.google.com/file/d/1anGcMpqpVCCD21Az7AzJiyafN9n0fz-i/view?usp=drive_link"
+    
+    # Ensure the directory for the output path exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    # Download the file
+    print(f"Downloading file from Google Drive: {url}")
+    gdown.download(url, output_path, quiet=False)
+    print(f"File saved to: {output_path}")
+
+
