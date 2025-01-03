@@ -12,6 +12,9 @@ import tensorflow as tf
 import numpy as np
 import tensorflow_hub as hub
 import matplotlib.pyplot as plt
+import os
+import gdown
+import pandas as pd
 
 def get_data():
     """
@@ -278,17 +281,18 @@ def download_and_preprocess_image(url, target_size=(128, 128), save_to_tfrecord=
 
     return image
 
-
-def download_json_from_google_drive(output_path):
+# function to get dataset with paires of pets
+def download_and_load_json_to_dataframe():
     """
-    Downloads a JSON file from Google Drive using the file's unique ID.
+    Downloads a JSON file from Google Drive using the file's unique ID and loads it into a pandas DataFrame.
 
     :param file_id: str, the unique identifier of the file on Google Drive.
                     Example: '1A2B3C4D5E6F...'
     :param output_path: str, the path to save the downloaded file. Example: './data/file.json'
     """
     # Construct the direct download URL
-    url = f"https://drive.google.com/file/d/1anGcMpqpVCCD21Az7AzJiyafN9n0fz-i/view?usp=drive_link"
+    url = f"https://drive.google.com/uc?id=1anGcMpqpVCCD21Az7AzJiyafN9n0fz-i&export=download"
+    output_path = './pets_pair.json'
     
     # Ensure the directory for the output path exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -297,5 +301,15 @@ def download_json_from_google_drive(output_path):
     print(f"Downloading file from Google Drive: {url}")
     gdown.download(url, output_path, quiet=False)
     print(f"File saved to: {output_path}")
+    
+    # Load the downloaded JSON file into a pandas DataFrame
+    print("Loading the JSON file into a pandas DataFrame...")
+    df = pd.read_json(output_path)
+    
+    # Display the first few rows of the DataFrame to confirm it's loaded correctly
+    print("Data loaded into DataFrame:")
+    print(df.head())
+    
+    return df
 
 
