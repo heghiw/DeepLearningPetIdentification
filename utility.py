@@ -281,18 +281,17 @@ def download_and_preprocess_image(url, target_size=(128, 128), save_to_tfrecord=
 
     return image
 
-# function to get dataset with paires of pets
-def download_json_from_google_drive():
+def download_file_from_google_drive():
     """
-    Downloads a JSON file from Google Drive using the file's unique ID.
-
-    :param file_id: str, the unique identifier of the file on Google Drive.
-                    Example: '1A2B3C4D5E6F...'
-    :param output_path: str, the path to save the downloaded file. Example: './data/file.json'
+    Downloads a file from Google Drive using a predefined file ID and saves it locally.
     """
-    # Construct the direct download URL
-    url = f"https://drive.google.com/uc?id=1anGcMpqpVCCD21Az7AzJiyafN9n0fz-i&export=download"
+    # Predefined file ID and output path
+    file_id = "1VR5GWGrVjEtJHEzTPIB-EHDQMG3UnmZ9"
     output_path = './pets_pair.json'
+    
+    # Construct the direct download URL
+    url = f"https://drive.google.com/uc?id={file_id}&export=download"
+    
     # Ensure the directory for the output path exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
@@ -300,5 +299,40 @@ def download_json_from_google_drive():
     print(f"Downloading file from Google Drive: {url}")
     gdown.download(url, output_path, quiet=False)
     print(f"File saved to: {output_path}")
+
+
+def load_and_prepare_dataframe(file_path):
+    """
+    Loads a JSON file into a pandas DataFrame and unwraps image tensors from lists.
+
+    :param file_path: str, the path to the JSON file to be loaded.
+    :return: pandas.DataFrame containing the processed data.
+    """
+    # Load the downloaded JSON file into a pandas DataFrame
+    print("Loading the JSON file into a pandas DataFrame...")
+    df = pd.read_json(file_path)
+    
+    # Process the DataFrame to unwrap image tensors from lists
+    print("Unwrapping image tensors from lists...")
+    def unwrap_tensors(tensor_list):
+        """
+        Converts a list (or nested list) of image tensor values into a more usable format.
+        
+        Example:
+        If tensor_list = [[0.1, 0.2], [0.3, 0.4]],
+        the function will flatten it or perform another appropriate transformation.
+        """
+        # Flatten or reshape tensors as needed
+        # Example: flattening nested lists into a single list
+        return [item for sublist in tensor_list for item in sublist] if isinstance(tensor_list, list) else tensor_list
+    
+    # Apply the transformation to the relevant column(s)
+    if 'image_tensors' in df.columns:
+        df['image_tensors'] = df['image_tensors'].apply(unwrap_tensors)
+    
+    print("DataFrame after processing:")
+    print(df.head())
+    
+    return df
 
 
