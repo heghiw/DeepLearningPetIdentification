@@ -53,6 +53,46 @@ def get_data():
         print(f"An error occurred while parsing JSON: {e}")
         raise
 
+def load_json_and_transform_lists_to_tensors(file_name):
+    """
+    Loads a JSON file into a dictionary and transforms any lists in the dictionary into tensors.
+
+    Args:
+        file_name (str): The name of the JSON file to load.
+
+    Returns:
+        dict: The dictionary with lists transformed into TensorFlow tensors.
+    """
+    try:
+        # Load the JSON data from the file
+        with open(file_name, 'r', encoding='utf-8') as json_file:
+            data = json.load(json_file)
+
+        # Function to recursively convert lists to tensors
+        def transform_lists_to_tensors(obj):
+            if isinstance(obj, list):
+                # Convert list to tensor
+                try:
+                    return tf.convert_to_tensor(obj)
+                except Exception:
+                    # If the list contains non-numeric data, we leave it as a list
+                    return [transform_lists_to_tensors(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {key: transform_lists_to_tensors(value) for key, value in obj.items()}
+            else:
+                return obj
+        
+        # Apply tensor transformation to the loaded data
+        data = transform_lists_to_tensors(data)
+        
+        print("Data successfully loaded and transformed.")
+        return data
+
+    except Exception as e:
+        print(f"Error loading data from JSON: {e}")
+        return None
+
+
 # Global variable to store the detector model
 detector = None
 
