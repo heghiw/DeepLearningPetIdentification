@@ -7,7 +7,7 @@
 import json
 from PIL import Image, ExifTags
 import requests
-import io
+import io, re
 import tensorflow as tf
 import numpy as np
 import tensorflow_hub as hub
@@ -321,23 +321,30 @@ def download_and_preprocess_image(url, target_size=(128, 128), save_to_tfrecord=
 
     return image
 
-def download_file_from_google_drive():
+def download_file_from_google_drive(url, output_path='./pets_pair.json'):
     """
-    Downloads a file from Google Drive using a predefined file ID and saves it locally.
+    Downloads a file from Google Drive using the provided URL and saves it locally.
+    
+    Parameters:
+        url (str): The Google Drive sharing URL.
+        output_path (str): The local path to save the downloaded file.
     """
-    # Predefined file ID and output path
-    file_id = "1VR5GWGrVjEtJHEzTPIB-EHDQMG3UnmZ9"
-    output_path = './pets_pair.json'
+    # Extract the file ID from the Google Drive URL
+    match = re.search(r"drive\.google\.com/file/d/([^/]+)/", url)
+    if not match:
+        raise ValueError("Invalid Google Drive URL format. Please provide a valid sharing link.")
+    
+    file_id = match.group(1)
     
     # Construct the direct download URL
-    url = f"https://drive.google.com/uc?id={file_id}&export=download"
+    direct_url = f"https://drive.google.com/uc?id={file_id}&export=download"
     
     # Ensure the directory for the output path exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     # Download the file
-    print(f"Downloading file from Google Drive: {url}")
-    gdown.download(url, output_path, quiet=False)
+    print(f"Downloading file from Google Drive: {direct_url}")
+    gdown.download(direct_url, output_path, quiet=False)
     print(f"File saved to: {output_path}")
 
 
