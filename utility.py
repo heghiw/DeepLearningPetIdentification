@@ -7,11 +7,14 @@
 import json
 from PIL import Image, ExifTags
 import requests
-import io
+import io, re
 import tensorflow as tf
 import numpy as np
 import tensorflow_hub as hub
 import matplotlib.pyplot as plt
+import os
+import gdown
+import pandas as pd
 
 def get_data():
     """
@@ -49,6 +52,46 @@ def get_data():
         # Handle issues when the response is not valid JSON
         print(f"An error occurred while parsing JSON: {e}")
         raise
+
+def load_json_and_transform_lists_to_tensors(file_name):
+    """
+    Loads a JSON file into a dictionary and transforms any lists in the dictionary into tensors.
+
+    Args:
+        file_name (str): The name of the JSON file to load.
+
+    Returns:
+        dict: The dictionary with lists transformed into TensorFlow tensors.
+    """
+    try:
+        # Load the JSON data from the file
+        with open(file_name, 'r', encoding='utf-8') as json_file:
+            data = json.load(json_file)
+
+        # Function to recursively convert lists to tensors
+        def transform_lists_to_tensors(obj):
+            if isinstance(obj, list):
+                # Convert list to tensor
+                try:
+                    return tf.convert_to_tensor(obj)
+                except Exception:
+                    # If the list contains non-numeric data, we leave it as a list
+                    return [transform_lists_to_tensors(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {key: transform_lists_to_tensors(value) for key, value in obj.items()}
+            else:
+                return obj
+        
+        # Apply tensor transformation to the loaded data
+        data = transform_lists_to_tensors(data)
+        
+        print("Data successfully loaded and transformed.")
+        return data
+
+    except Exception as e:
+        print(f"Error loading data from JSON: {e}")
+        return None
+
 
 # Global variable to store the detector model
 detector = None
@@ -204,39 +247,139 @@ def visualize_image(image, title="Processed Image", visualize=False):
         plt.show()
 
 
-# Function to download image and preprocess
-def download_and_preprocess_image(url, target_size=(224, 224), visualize=False):
+# Resize the image to a smaller size to reduce the tensor's size
+def resize_image(image, target_size=(128, 128)):
     """
-    Downloads an image from the provided URL, preprocesses it, and optionally visualizes it.
+    Resize the image to the target size.
 
-    Arguments:
-    url -- The URL of the image to download.
-    target_size -- The size to resize the image to (default is 224x224).
-    visualize -- Flag to control if the image should be visualized (default is True).
+    Args:
+    image -- The image tensor to resize.
+    target_size -- The target size (height, width) for resizing.
 
     Returns:
-    The preprocessed image (TensorFlow Tensor).
+    Resized image tensor.
     """
-    # Download the image from the URL
+    resized_image = tf.image.resize(image, target_size)
+    return resized_image
+
+# Save the image tensor in a compressed format using TFRecord
+def save_tensor_as_tfrecord(tensor, filename="image_data.tfrecord"):
+    """
+    Saves the image tensor in TFRecord format to reduce size and improve efficiency.
+
+    Args:
+    tensor -- The image tensor to save.
+    filename -- The name of the file to save the tensor in.
+    """
+    # Create a TFRecord writer
+    with tf.io.TFRecordWriter(filename) as writer:
+        # Create a feature dictionary with the image tensor
+        feature = {
+            'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.io.encode_jpeg(tensor).numpy()]))
+        }
+        example = tf.train.Example(features=tf.train.Features(feature=feature))
+        # Write the example to the TFRecord file
+        writer.write(example.SerializeToString())
+
+# Load an image from a URL and preprocess
+def download_and_preprocess_image(url, target_size=(128, 128), save_to_tfrecord=False):
+    """
+    Download and preprocess the image, then optionally save it as a TFRecord.
+
+    Args:
+    url -- The URL to download the image.
+    target_size -- The target size to resize the image.
+    save_to_tfrecord -- Flag to save the image tensor as a TFRecord (default False).
+    
+    Returns:
+    Resized image tensor.
+    """
+    # Assuming the `fix_orientation`, `detect_pet`, etc., are defined as before
+
+    # Download the image (as before)
     response = requests.get(url)
     image_bytes = response.content
     pil_image = Image.open(io.BytesIO(image_bytes))
     pil_image = fix_orientation(pil_image)
 
-    # Convert the image to a TensorFlow tensor and normalize
+    # Convert to tensor and normalize
     image = tf.convert_to_tensor(np.array(pil_image), dtype=tf.float32) / 255.0
 
-    # Detect pets in the image
+    # Detect and crop the pet (optional)
     bounding_box = detect_pet(image)
-
     if bounding_box is not None:
-        # If a pet is detected, crop and resize around it
         image = crop_and_resize(image, bounding_box, target_size)
     else:
-        # If no pet detected, resize with padding
         image = tf.image.resize_with_crop_or_pad(image, target_size[0], target_size[1])
 
-    # Visualize the image if needed
-    visualize_image(image, title="Processed Image", visualize=visualize)
+    # Resize the image to reduce its size (e.g., 128x128)
+    image = resize_image(image, target_size)
+
+    # Optionally save the image tensor to a TFRecord file
+    if save_to_tfrecord:
+        save_tensor_as_tfrecord(image, filename="pet_image_data.tfrecord")
 
     return image
+
+def download_file_from_google_drive(url, output_path='./pets_pair.json'):
+    """
+    Downloads a file from Google Drive using the provided URL and saves it locally.
+    
+    Parameters:
+        url (str): The Google Drive sharing URL.
+        output_path (str): The local path to save the downloaded file.
+    """
+    # Extract the file ID from the Google Drive URL
+    match = re.search(r"drive\.google\.com/file/d/([^/]+)/", url)
+    if not match:
+        raise ValueError("Invalid Google Drive URL format. Please provide a valid sharing link.")
+    
+    file_id = match.group(1)
+    
+    # Construct the direct download URL
+    direct_url = f"https://drive.google.com/uc?id={file_id}&export=download"
+    
+    # Ensure the directory for the output path exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    # Download the file
+    print(f"Downloading file from Google Drive: {direct_url}")
+    gdown.download(direct_url, output_path, quiet=False)
+    print(f"File saved to: {output_path}")
+
+
+def load_and_prepare_dataframe(file_path):
+    """
+    Loads a JSON file into a pandas DataFrame and unwraps image tensors from lists.
+
+    :param file_path: str, the path to the JSON file to be loaded.
+    :return: pandas.DataFrame containing the processed data.
+    """
+    # Load the downloaded JSON file into a pandas DataFrame
+    print("Loading the JSON file into a pandas DataFrame...")
+    df = pd.read_json(file_path)
+    
+    # Process the DataFrame to unwrap image tensors from lists
+    print("Unwrapping image tensors from lists...")
+    def unwrap_tensors(tensor_list):
+        """
+        Converts a list (or nested list) of image tensor values into a more usable format.
+        
+        Example:
+        If tensor_list = [[0.1, 0.2], [0.3, 0.4]],
+        the function will flatten it or perform another appropriate transformation.
+        """
+        # Flatten or reshape tensors as needed
+        # Example: flattening nested lists into a single list
+        return [item for sublist in tensor_list for item in sublist] if isinstance(tensor_list, list) else tensor_list
+    
+    # Apply the transformation to the relevant column(s)
+    if 'image_tensors' in df.columns:
+        df['image_tensors'] = df['image_tensors'].apply(unwrap_tensors)
+    
+    print("DataFrame after processing:")
+    print(df.head())
+    
+    return df
+
+
